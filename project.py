@@ -33,6 +33,7 @@ def start():
     if get_appdata():
         userInput = input("Type your Master Password into the Terminal window and press ENTER. \nNote: if you enter your Master Password incorrectly, the application will not work as intended. \n")
         masterPwd = bytes(userInput,'utf-8')
+        print ("appdata : "+str(appdata))
         # if there appdata.txt exists, then the user already has masterPwd
 
     else:
@@ -74,12 +75,7 @@ def new_master():
 def verify_mac():
     global appdata
     global masterPwd
-    print ("---------------")
-    print (str(generate_mac()))
-    print ("================")
-    print (str(appdata[:-32]))
-    print ("---------------")
-    generate_mac() == appdata[:-32]
+    return generate_mac() == appdata[-32:]
 
 def generate_mac():
     global appdata
