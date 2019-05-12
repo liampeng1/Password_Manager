@@ -1,5 +1,8 @@
+import pyperclip
 import string
 import random
+from Crypto.Protocol.KDF import PBKDF2
+from Crypto.Random import get_random_bytes
 from Crypto.Cipher import AES
 from Crypto.Hash import SHA256, HMAC
 from Crypto import Random
@@ -106,14 +109,16 @@ def write_appdata_to_file():
     appdata_file.close()
 
 def set_password():
+
     global appdata
     global masterPwd
+
     # prompt user to enter URL and username
     URL = input("Type the URL (or some other information) for the website (or service) associated with the account whose password you wish to access, and press ENTER. \nMake sure that you remember this, as you will need to enter the same thing to access your saved password information access.")
     username = input("Now type the username associated with the password you want to save, and press ENTER. \nOnce again, be sure to remember what you enter here, as you must type it in exactly to access a stored password.")
     # Compute a SHA-2 hash of the concatenated URL and username associated with that password, and search for this.
     hash = SHA256.new()
-    hash.update(URL+ '|' + username)
+    hash.update((URL + '|' + username).encode())
     infoHashed = hash.digest()
     # Generate new password and copy to clipboard
     chars = string.ascii_letters + string.digits + "!@#$%^&*()+_"
@@ -124,9 +129,9 @@ def set_password():
     # Create one-time-pad using PBKDF2 (with masterPwd as password, salt as salt, dkLen as len(masterPwd), and count as 1000)
     one_time_pad = PBKDF2(masterPwd, salt, dkLen=len(masterPwd), count=1000)
     # XOR with one-time-pad to create ciphertext
-    ciphertext = strxor(password, one_time_pad)
-    # save \n + infoHashed +  \n + salt + \n + ciphertext + \n before mac
-    appdata = appdata[:-32] + "\n" + infoHased + "\n" + salt + "\n" + ciphertext + "\n" + appdata[-32:]
+    ciphertext = strxor(password.encode(), one_time_pad)
+    # save infoHashed + || + salt + || + ciphertext + || before mac
+    appdata = appdata[:-32] + infoHashed + "||".encode() + salt + "||".encode() + ciphertext + "||".encode() + appdata[-32:]
 
     # update the mac
     set_mac()
@@ -134,6 +139,7 @@ def set_password():
     write_appdata_to_file()
 
 def retrieve_password():
+
     global appdata
     global masterPwd
     # If the user chooses to access a previosly saved password
@@ -141,20 +147,28 @@ def retrieve_password():
     username = input("Now type the username associated with the password you want to access, and press ENTER.")
     # Compute a SHA-2 hash of the concatenated URL and username associated with that password, and search for this.
     hash = SHA256.new()
-    hash.update(URL+ '|' + username)
+    hash.update((URL + '|' + username).encode())
     infoHashed = hash.digest()
-    # Parse appdata.txt for infoHashed
+    # Parse appdata for infoHashed
+    print(infoHashed)
+    if infoHashed not in appdata:
+        print("We couldn't find that URL-username combination. You may have entered the information wrong, or you may not have had a password stored at that URL with the associated username.")
+    # If infoHashed is found, get salt and recreate one-time pad
+    else:
+        substring = appdata.split(infoHashed,1)[1] 
+        salt = substring.split("||".encode(),3)[1]
+        ciphertext = substring.split("||".encode(),3)[2]
+
+        #Create one-time-pad using PBKDF2 (with masterPwd as password, salt as salt, dkLen as len(masterPwd), and count as 1000)
+        one_time_pad = PBKDF2(masterPwd, salt, dkLen=len(masterPwd), count=1000)
+
+        # XOR with one-time-pad to create plaintext
+        password = strxor(ciphertext, one_time_pad).decode()
+
     # save the line under infoHashed as "salt," and the line under salt as "ciphertext"
     # Create one-time-pad using PBKDF2 (with masterPwd as password, salt as salt, dkLen as len(masterPwd), and count as 1000)
     # XOR this one-time-pad with ciphertext
     pyperclip.copy(password)
-
-
-
-    hash = SHA256.new()
-    hash.update(masterPwd)
-    mackey = hash.digest()
-    p = PBKDF2(password, salt, dkLen=len(enc_exp_e), count=1000)
 
 def run_application():
     global appdata
