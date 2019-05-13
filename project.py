@@ -69,7 +69,7 @@ def new_master():
     master = ''.join(random.choice(chars) for x in range(12))
 
     print ("It has been copied to the clipboard, make sure to memorize it. Please don't store it on a text file on your device.")
-    pyperclip.copy(password)
+    pyperclip.copy(master)
 
 
     masterPwd = bytes(master,'utf-8')
