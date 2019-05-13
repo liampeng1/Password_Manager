@@ -1,12 +1,14 @@
 import pyperclip
 import string
 import random
+import getpass
 from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Random import get_random_bytes
 from Crypto.Cipher import AES
 from Crypto.Hash import SHA256, HMAC
 from Crypto import Random
 from Crypto.Util.strxor import strxor
+
 
 # secure password management application
 
@@ -34,10 +36,12 @@ def start():
     print ("Welcome to PassFast!")
 
     if get_appdata():
-        userInput = input("Type your Master Password into the Terminal window and press ENTER. \nNote: if you enter your Master Password incorrectly, the application will not work as intended. \n")
+
+
+        userInput = getpass.getpass("Type your Master Password into the Terminal window and press ENTER. \nNote: if you enter your Master Password incorrectly, the application will not work as intended. \n")
         masterPwd = bytes(userInput,'utf-8')
-        print ("appdata : "+str(appdata))
         # if there appdata.txt exists, then the user already has masterPwd
+
 
     else:
         new_master()
@@ -61,11 +65,12 @@ def new_master():
 
     print ("You don't have any data for this application saved on this system, so we'll start from scratch.")
     print ("We'll go ahead and give you a very important tring called a Master Password, which you will always need in order to use this application and access your saved passwords.")
-    print ("Here it is, be sure to memorize it:")
     chars = string.ascii_letters + string.digits + "!@#$%^&*()+_"
     master = ''.join(random.choice(chars) for x in range(12))
 
-    print('\n'+master+'\n')
+    print ("It has been copied to the clipboard, make sure to memorize it. Please don't store it on a text file on your device.")
+    pyperclip.copy(password)
+
 
     masterPwd = bytes(master,'utf-8')
     appdata_file = open("appdata.txt", "w+")
@@ -114,8 +119,8 @@ def set_password():
     global masterPwd
 
     # prompt user to enter URL and username
-    URL = input("Type the URL (or some other information) for the website (or service) associated with the account whose password you wish to access, and press ENTER. \nMake sure that you remember this, as you will need to enter the same thing to access your saved password information access.")
-    username = input("Now type the username associated with the password you want to save, and press ENTER. \nOnce again, be sure to remember what you enter here, as you must type it in exactly to access a stored password.")
+    URL = input("Type the URL (or some other information) for the website (or service) associated with the account whose password you wish to access, and press ENTER. \nMake sure that you remember this, as you will need to enter the same thing to access your saved password information access.\n")
+    username = input("Now type the username associated with the password you want to save, and press ENTER. \nOnce again, be sure to remember what you enter here, as you must type it in exactly to access a stored password.\n")
     # Compute a SHA-2 hash of the concatenated URL and username associated with that password, and search for this.
     hash = SHA256.new()
     hash.update((URL + '|' + username).encode())
@@ -143,14 +148,13 @@ def retrieve_password():
     global appdata
     global masterPwd
     # If the user chooses to access a previosly saved password
-    URL = input("Type the URL (or some other information) for the website (or service) associated with the account whose password you wish to access, and press ENTER. \nMake sure that what you enter here is the exact same text typed in when you originally saved the password you want to access.")
-    username = input("Now type the username associated with the password you want to access, and press ENTER.")
+    URL = input("Type the URL (or some other information) for the website (or service) associated with the account whose password you wish to access, and press ENTER. \nMake sure that what you enter here is the exact same text typed in when you originally saved the password you want to access.\n")
+    username = input("Now type the username associated with the password you want to access, and press ENTER.\n")
     # Compute a SHA-2 hash of the concatenated URL and username associated with that password, and search for this.
     hash = SHA256.new()
     hash.update((URL + '|' + username).encode())
     infoHashed = hash.digest()
     # Parse appdata for infoHashed
-    print(infoHashed)
     if infoHashed not in appdata:
         print("We couldn't find that URL-username combination. You may have entered the information wrong, or you may not have had a password stored at that URL with the associated username.")
     # If infoHashed is found, get salt and recreate one-time pad
