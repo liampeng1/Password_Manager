@@ -9,7 +9,6 @@ from Crypto.Hash import SHA256, HMAC
 from Crypto import Random
 from Crypto.Util.strxor import strxor
 
-
 # secure password management application
 
 # user creates master password
@@ -36,18 +35,11 @@ def start():
     print ("Welcome to PassFast!")
 
     if get_appdata():
-
-
         userInput = getpass.getpass("Type your Master Password into the Terminal window and press ENTER. \nNote: if you enter your Master Password incorrectly, the application will not work as intended. \n")
         masterPwd = bytes(userInput,'utf-8')
         # if there appdata.txt exists, then the user already has masterPwd
-
-
     else:
         new_master()
-
-
-
 
 def get_appdata():
     global appdata
@@ -71,7 +63,6 @@ def new_master():
     print ("It has been copied to the clipboard, make sure to memorize it. Please don't store it on a text file on your device.")
     pyperclip.copy(master)
 
-
     masterPwd = bytes(master,'utf-8')
     appdata_file = open("appdata.txt", "w+")
     appdata_file.close()
@@ -83,7 +74,11 @@ def new_master():
 def verify_mac():
     global appdata
     global masterPwd
-    return generate_mac() == appdata[-32:]
+    if generate_mac() != appdata[-32:]:
+        print ("IT'S A TRAP!!!")
+        print ("Delete your file and start over. Someone has tampered with it.")
+        print ("That or you entered the wrong master password.")
+        exit()
 
 def generate_mac():
     global appdata
@@ -135,13 +130,26 @@ def set_password():
     one_time_pad = PBKDF2(masterPwd, salt, dkLen=len(masterPwd), count=1000)
     # XOR with one-time-pad to create ciphertext
     ciphertext = strxor(password.encode(), one_time_pad)
-    # save infoHashed + || + salt + || + ciphertext + || before mac
-    appdata = appdata[:-32] + infoHashed + "||".encode() + salt + "||".encode() + ciphertext + "||".encode() + appdata[-32:]
+    if infoHashed in appdata:
+        ans = input("You already have a password saved for this url + username combination. Do you want to overwrite this password? (y/n)\n")
+        if ans == 'y':
+            start = appdata.index(infoHashed)
+            end = start + len(infoHashed) + len("||") + len(salt) + len('||') + len(password)
+            appdata = appdata[:start] + infoHashed + "||".encode() + salt + "||".encode() + ciphertext + "||".encode() + appdata[end:]
+    else:
+        # save infoHashed + || + salt + || + ciphertext + || before mac
+        appdata = appdata[:-32] + infoHashed + "||".encode() + salt + "||".encode() + ciphertext + "||".encode() + appdata[-32:]
 
     # update the mac
     set_mac()
-
     write_appdata_to_file()
+
+def leave():
+    ans = input("Do you want to perform another operation? (y/n)\n")
+    if ans == 'y':
+        run_application()
+    else:
+        exit()
 
 def retrieve_password():
 
@@ -159,7 +167,7 @@ def retrieve_password():
         print("We couldn't find that URL-username combination. You may have entered the information wrong, or you may not have had a password stored at that URL with the associated username.")
     # If infoHashed is found, get salt and recreate one-time pad
     else:
-        substring = appdata.split(infoHashed,1)[1] 
+        substring = appdata.split(infoHashed,1)[1]
         salt = substring.split("||".encode(),3)[1]
         ciphertext = substring.split("||".encode(),3)[2]
 
@@ -168,20 +176,14 @@ def retrieve_password():
 
         # XOR with one-time-pad to create plaintext
         password = strxor(ciphertext, one_time_pad).decode()
-
-    # save the line under infoHashed as "salt," and the line under salt as "ciphertext"
-    # Create one-time-pad using PBKDF2 (with masterPwd as password, salt as salt, dkLen as len(masterPwd), and count as 1000)
-    # XOR this one-time-pad with ciphertext
-    pyperclip.copy(password)
+        # save the line under infoHashed as "salt," and the line under salt as "ciphertext"
+        # Create one-time-pad using PBKDF2 (with masterPwd as password, salt as salt, dkLen as len(masterPwd), and count as 1000)
+        # XOR this one-time-pad with ciphertext
+        pyperclip.copy(password)
 
 def run_application():
     global appdata
     global masterPwd
-    if not verify_mac():
-        print ("IT'S A TRAP!!!")
-        print ("Delete your file and start over. Someone has tampered with it.")
-        print ("That or you entered the wrong master password.")
-        exit()
     # The user chooses whether to create a new password or access a previously saved one
     print ("Would you like to set or retrieve a password?")
     goal = input("Enter 's' to set ot 'r' to retrieve and then press ENTER.\n")
@@ -194,7 +196,9 @@ def main():
     global appdata
     global masterPwd
     start()
+    verify_mac()
     run_application()
+    leave()
 
 if __name__== "__main__":
     main()
