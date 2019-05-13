@@ -182,7 +182,7 @@ def run_application():
         print ("Delete your file and start over. Someone has tampered with it.")
         print ("That or you entered the wrong master password.")
         exit()
-    # The user chooses whether to create a new password or access a previously saved one
+    # =The user chooses whether to create a new password or access a previously saved one
     print ("Would you like to set or retrieve a password?")
     goal = input("Enter 's' to set ot 'r' to retrieve and then press ENTER.\n")
     if goal == 's':
